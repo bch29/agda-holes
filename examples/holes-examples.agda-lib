@@ -1,0 +1,5 @@
+name: holes-examples
+depend:
+  standard-library
+  holes
+include: .
