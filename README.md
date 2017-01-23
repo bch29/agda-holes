@@ -43,6 +43,12 @@ It can turn proofs like this:
 
 It works best with propositional equality, but there is also (work in progress) support for equalities that do not have general congruence.
 
+## Dependencies
+
+This library is tested with Agda version 2.5.2. It does not work with earlier versions of Agda.
+
+It doesn't require any other Agda libraries (although the examples require the standard library).
+
 ## Installation
 
 To install from a bash shell:
