@@ -3,7 +3,7 @@ Holes
 
 ## Notice
 
-This work is based on my undergraduate dissertation project, which is ongoing. As such I can't currently accept pull requests, although bug reports and feature requests are welcome.
+This work is part of my undergraduate dissertation project, which is ongoing. As such I can't currently accept pull requests, although bug reports and feature requests are welcome.
 
 ## Introduction ##
 
