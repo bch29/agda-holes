@@ -1,7 +1,7 @@
 Holes
 -----
 
-## Notice
+## Notice ##
 
 This work is part of my undergraduate dissertation project, which is ongoing. As such I can't currently accept pull requests, although bug reports and feature requests are welcome.
 
@@ -32,7 +32,7 @@ It can turn proofs like this:
 *-distrib-+ zero b c = refl
 *-distrib-+ (suc a) b c =
   b + c + ⌞ a * (b + c) ⌟         ≡⟨ cong! (*-distrib-+ a b c) ⟩
-  (b + c) + (a * b + a * c)       ≡⟨ cong! (+-assoc (b + c) (a * b) (a * c)) ⟩
+  ⌞ (b + c) + (a * b + a * c) ⌟   ≡⟨ cong! (+-assoc (b + c) (a * b) (a * c)) ⟩
   ⌞ (b + c) + a * b ⌟ + a * c     ≡⟨ cong! (+-assoc b c (a * b)) ⟩
   (b + ⌞ c + a * b ⌟) + a * c     ≡⟨ cong! (+-comm c (a * b)) ⟩
   ⌞ b + (a * b + c) ⌟ + a * c     ≡⟨ cong! (+-assoc b (a * b) c) ⟩
@@ -43,31 +43,31 @@ It can turn proofs like this:
 
 It works best with propositional equality, but there is also (work in progress) support for equalities that do not have general congruence.
 
-## Dependencies
+## Dependencies ##
 
 This library is tested with Agda version 2.5.2. It does not work with earlier versions of Agda.
 
 It doesn't require any other Agda libraries (although the examples require the standard library).
 
-## Installation
+## Installation ##
 
 To install from a bash shell:
 
 ```bash
-# Clone this repository
+# Clone this repository #
 git clone https://github.com/bch29/agda-holes
 
-# Add the .agda-lib file to your global Agda libraries file
+# Add the .agda-lib file to your global Agda libraries file #
 echo "$(pwd)/agda-holes/src/holes.agda-lib" >> ~/.agda/libraries
 ```
 
-## Usage
+## Usage ##
 
 For examples, see the `examples/` directory of this repository.
 
 Assuming your project has a ".agda-lib" file, add `holes` to the `depend` section (see `examples/holes-examples.agda-lib`).
 
-### In General
+### In General ###
 
 This library works by inspecting type information to discover congruence paths for you, and automatically produce the necessary boilerplate. You need to use two things to interact with it: the `⌞_⌟` function and the `cong!` macro.
 
@@ -89,7 +89,7 @@ Notice that `⌞_⌟` is wrapped around the part of the expression that we want 
 
 This works particularly well in conjunction with equational reasoning, as demonstrated above.
 
-### Propositional Equality
+### Propositional Equality ###
 
 Using this library with propositional equality is easy. Just import:
 
@@ -105,9 +105,9 @@ open import Holes.Cong.Propositional
 
 then write your proofs with holes as in the introductory example.
 
-### General Congruence
+### General Congruence ###
 
-It's not much harder to use this library with a different equivalence relation that supports a general `cong` theorem. That is, if your relation is written `_≈_`, and you have a proof of a function with the type:
+It's not much harder to use this library with a different equivalence relation that supports a general `cong` theorem. That is, if your relation is written `_≈_`, and you have a function with the type:
 
 ```agda
 cong : ∀ {a b} {A : Set a} {B : Set b} (f : A → B) {x y} → x ≈ y → f x ≈ f y
@@ -120,13 +120,13 @@ cong₁ : ∀ {a b} {A : Set a} {B : Set b} {x y} → x ≈ y → (f : A → B) 
 cong₂ : ∀ {a b} (A : Set a) (B : Set b) (f : A → B) {x y} → x ≈ y → f x ≈ f y
 ```
 
-You must also have available a `sym` theorem with the following type:
+You must also have available a `sym` function with the following type:
 
 ```agda
 sym : ∀ {a} {A : Set a} {x y : A} → x ≈ y → y ≈ x
 ```
 
-This function may only have exactly _one_ explicit argument.
+This function must have exactly _one_ explicit argument.
 
 Now, to use the library, you must do the following (where `cong` and `sym` are the functions described above):
 
@@ -137,7 +137,7 @@ open import Holes.Cong.General (quote-term _≈_) (quote-term cong) (quote-term 
 
 Write your proofs as usual, but making use of the `cong!` macro.
 
-### Limited Congruence
+### Limited Congruence ###
 
 In order to use this library for proofs about equalities that _don't_ have a general `cong` theorem available, you have to provide it with a database of specific congruences that it can use.
 
