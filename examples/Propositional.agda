@@ -66,7 +66,7 @@ open ≡-Reasoning
 *-distrib-+ zero b c = refl
 *-distrib-+ (suc a) b c =
   b + c + ⌞ a * (b + c) ⌟         ≡⟨ cong! (*-distrib-+ a b c) ⟩
-  (b + c) + (a * b + a * c)       ≡⟨ cong! (+-assoc (b + c) (a * b) (a * c)) ⟩
+  ⌞ (b + c) + (a * b + a * c) ⌟   ≡⟨ cong! (+-assoc (b + c) (a * b) (a * c)) ⟩
   ⌞ (b + c) + a * b ⌟ + a * c     ≡⟨ cong! (+-assoc b c (a * b)) ⟩
   (b + ⌞ c + a * b ⌟) + a * c     ≡⟨ cong! (+-comm c (a * b)) ⟩
   ⌞ b + (a * b + c) ⌟ + a * c     ≡⟨ cong! (+-assoc b (a * b) c) ⟩
