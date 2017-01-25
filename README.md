@@ -87,6 +87,8 @@ myLemma a b c = cong! (+-comm b c)
 
 Notice that `⌞_⌟` is wrapped around the part of the expression that we want to rewrite in the left hand side. The goal type to the right of the `=` is `a + ⌞ b + c ⌟ ≡ a + (c + b)`, which is equivalent to `a + (b + c) ≡ a + (c + b)`. The argument to `cong!` is just the proof needed to perform the rewriting, assuming we are inside the 'hole'. The rest is done by `cong!`.
 
+In addition to performing congruence automatically, it performs symmetry too: you can provide the proof in either direction, and if necessary symmetry is applied.
+
 This works particularly well in conjunction with equational reasoning, as demonstrated above.
 
 ### Propositional Equality ###
