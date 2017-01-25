@@ -103,6 +103,17 @@ length : ∀ {a}{A : Set a} → List A → ℕ
 length [] = 0
 length (_ ∷ xs) = suc (length xs)
 
+zip : ∀ {a b}{A : Set a}{B : Set b} → List A → List B → List (A × B)
+zip [] _ = []
+zip _ [] = []
+zip (x ∷ xs) (y ∷ ys) = (x , y) ∷ zip xs ys
+
+infixr 6 _++_
+
+_++_ : ∀ {a}{A : Set a} → List A → List A → List A
+[] ++ ys = ys
+(x ∷ xs) ++ ys = x ∷ xs ++ ys
+
 --------------------------------------------------------------------------------
 --  Nat operations
 --------------------------------------------------------------------------------

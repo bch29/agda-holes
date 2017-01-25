@@ -141,6 +141,4 @@ Write your proofs as usual, but making use of the `cong!` macro.
 
 In order to use this library for proofs about equalities that _don't_ have a general `cong` theorem available, you have to provide it with a database of specific congruences that it can use.
 
-This is currently a work in progress. It works but with some problems. See the file `src/Holes/Test/Limited.agda` for a few examples of usage.
-
-
+This is currently a work in progress. It works but is somewhat cumbersome. See the file `src/Holes/Test/Limited.agda` for a few examples of usage.

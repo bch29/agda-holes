@@ -6,43 +6,7 @@ open import Holes.Cong.Limited
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 
-module Propositional (+-comm : ∀ a b → a + b ≡ b + a) where
-  +-cong₁ : ∀ {a a′ b} → a ≡ a′ → a + b ≡ a′ + b
-  +-cong₁ refl = refl
-
-  +-cong₂ : ∀ {a b b′} → b ≡ b′ → a + b ≡ a + b′
-  +-cong₂ refl = refl
-
-  suc-cong : ∀ {m n} → m ≡ n → suc m ≡ suc n
-  suc-cong refl = refl
-
-  database
-    = (quote _+_ , 0 , quote-term +-cong₁)
-    ∷ (quote _+_ , 1 , quote-term +-cong₂)
-    ∷ (quote suc , 0 , quote-term suc-cong)
-    ∷ []
-
-  open AutoCong database
-
-  test1 : ∀ a b → suc ⌞ a + b ⌟ ≡ suc (b + a)
-  test1 a b = cong! (+-comm a b)
-
-  test2 : ∀ a b c → suc (⌞ a + b ⌟ + c) ≡ suc (b + a + c)
-  test2 a b c = cong! (+-comm a b)
-
-  -- NOTE: The following doesn't work because the macro doesn't provide some
-  -- necessary implicit arguments to the cong functions.
-
-  -- test3 : ∀ a b c → suc (a + ⌞ b + c ⌟) ≡ suc (a + (c + b))
-  -- test3 a b c = cong! (+-comm b c)
-
-  test3 : ∀ a b c → suc (a + ⌞ b + c ⌟) ≡ suc (a + (c + b))
-  test3 a b c = id suc-cong (+-cong₂ {a = a} (+-comm b c))
-
-  test4 : ∀ a b c a′ → a ≡ a′ → suc (⌞ a ⌟ + b + c) ≡ suc (a′ + b + c)
-  test4 _ _ _ _ eq = cong! eq
-
-module Alternative where
+module Contrived where
 
   infixl 5 _⊕_
   infixl 6 _⊛_
@@ -73,26 +37,42 @@ module Alternative where
   ≈-refl {m ⊕ n} = ⊕-cong ≈-refl ≈-refl
   ≈-refl {m ⊛ n} = ⊛-cong ≈-refl ≈-refl
 
-  ⊕-cong₁ : ∀ {a a′ b} → a ≈ a′ → a ⊕ b ≈ a′ ⊕ b
-  ⊕-cong₁ = flip ⊕-cong ≈-refl
+  {-
+  Each congruence in the database must have a type with the same shape as the
+  below, following these rules:
 
-  ⊕-cong₂ : ∀ {a b b′} → b ≈ b′ → a ⊕ b ≈ a ⊕ b′
-  ⊕-cong₂ = ⊕-cong ≈-refl
+  - A congruence `c` is for a single _top-level_ function `f`
+  - `c` may only be a congruence for _one_ of `f`'s arguments
+  - Each explicit argument to `f` must be an explicit argument to `c`
+  - The 'rewritten' version of the changing argument must follow as an implicit
+    argument to `c`
+  - The equation to do the local rewriting must be the next explicit argument
+  -}
 
-  ⊛-cong₁ : ∀ {a a′ b} → a ≈ a′ → a ⊛ b ≈ a′ ⊛ b
-  ⊛-cong₁ = flip ⊛-cong ≈-refl
+  ⊕-cong₁ : ∀ a b {a′} → a ≈ a′ → a ⊕ b ≈ a′ ⊕ b
+  ⊕-cong₁ _ _ = flip ⊕-cong ≈-refl
 
-  ⊛-cong₂ : ∀ {a b b′} → b ≈ b′ → a ⊛ b ≈ a ⊛ b′
-  ⊛-cong₂ = ⊛-cong ≈-refl
+  ⊕-cong₂ : ∀ a b {b′} → b ≈ b′ → a ⊕ b ≈ a ⊕ b′
+  ⊕-cong₂ _ _ = ⊕-cong ≈-refl
 
-  succ-cong′ : ∀ {m n} → m ≈ n → succ m ≈ succ n
-  succ-cong′ = succ-cong
+  ⊛-cong₁ : ∀ a b {a′} → a ≈ a′ → a ⊛ b ≈ a′ ⊛ b
+  ⊛-cong₁ _ _ = flip ⊛-cong ≈-refl
 
-  -- Create the database of congruences.
-  -- This is a list of (Name × ArgPlace × Congruence) triples.
-  -- The `Name` is the (reflected) name of the function to which the congruence applies
-  -- The `ArgPlace` is the index of the argument place that the congruence can rewrite at
-  -- The `Congruence` is a reflected copy of the congruence function, of type `Term`
+  ⊛-cong₂ : ∀ a b {b′} → b ≈ b′ → a ⊛ b ≈ a ⊛ b′
+  ⊛-cong₂ _ _ = ⊛-cong ≈-refl
+
+  succ-cong′ : ∀ n {n′} → n ≈ n′ → succ n ≈ succ n′
+  succ-cong′ _ = succ-cong
+
+  {-
+  Create the database of congruences.
+  - This is a list of (Name × ArgPlace × Congruence) triples.
+  - The `Name` is the (reflected) name of the function to which the congruence
+    applies.
+  - The `ArgPlace` is the index of the argument place that the congruence can
+    rewrite at.
+  - The `Congruence` is a reflected copy of the congruence function, of type `Term`
+  -}
 
   database
     = (quote _⊕_ , 0 , quote-term ⊕-cong₁)
@@ -112,3 +92,33 @@ module Alternative where
 
   test3 : ∀ a b c → succ (a ⊕ ⌞ b ⊕ c ⌟) ≈ succ (a ⊕ (c ⊕ b))
   test3 a b c = cong! (⊕-comm b c)
+
+module Propositional (+-comm : ∀ a b → a + b ≡ b + a) where
+  +-cong₁ : ∀ a b {a′} → a ≡ a′ → a + b ≡ a′ + b
+  +-cong₁ _ _ refl = refl
+
+  +-cong₂ : ∀ a b {b′} → b ≡ b′ → a + b ≡ a + b′
+  +-cong₂ _ _ refl = refl
+
+  suc-cong : ∀ n {n′} → n ≡ n′ → suc n ≡ suc n′
+  suc-cong _ refl = refl
+
+  database
+    = (quote _+_ , 0 , quote-term +-cong₁)
+    ∷ (quote _+_ , 1 , quote-term +-cong₂)
+    ∷ (quote suc , 0 , quote-term suc-cong)
+    ∷ []
+
+  open AutoCong database
+
+  test1 : ∀ a b → suc ⌞ a + b ⌟ ≡ suc (b + a)
+  test1 a b = cong! (+-comm a b)
+
+  test2 : ∀ a b c → suc (⌞ a + b ⌟ + c) ≡ suc (b + a + c)
+  test2 a b c = cong! (+-comm a b)
+
+  test3 : ∀ a b c → suc (a + ⌞ b + c ⌟) ≡ suc (a + (c + b))
+  test3 a b c = cong! (+-comm b c)
+
+  test4 : ∀ a b c a′ → a ≡ a′ → suc (⌞ a ⌟ + b + c) ≡ suc (a′ + b + c)
+  test4 _ _ _ _ eq = cong! eq
