@@ -126,7 +126,7 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
     pathToCong : HolePath → Term → Result CongErr Term
     pathToCong hole eq = return eq
     pathToCong (app nm argPlace allArgs hp) eq =
-      okOr (noCongAvailable nm argPlace) (findCong nm argPlace) >>= λ cong →
+      liftMaybe (noCongAvailable nm argPlace) (findCong nm argPlace) >>= λ cong →
       pathToCong hp eq >>= λ rec →
       return (def (quote id) (basicArg cong ∷ allArgs ++ (basicArg rec ∷ [])))
 
