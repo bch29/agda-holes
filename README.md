@@ -147,7 +147,7 @@ This is currently a work in progress. It works but is somewhat cumbersome. See t
 
 ## Limitations
 
-There are currently a few limitations of this library compared to writing out congruences explicitly. All of these should be solvable with time, however.
+There are currently a few limitations of using this library compared to writing out congruences explicitly. All of these should be solvable with time, however.
 
 - Inference of arguments to user-provided proofs
 
