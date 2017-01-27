@@ -144,3 +144,35 @@ Write your proofs as usual, but making use of the `cong!` macro.
 In order to use this library for proofs about equalities that _don't_ have a general `cong` theorem available, you have to provide it with a database of specific congruences that it can use.
 
 This is currently a work in progress. It works but is somewhat cumbersome. See the file `src/Holes/Test/Limited.agda` for a few examples of usage.
+
+## Limitations
+
+There are currently a few limitations of this library compared to writing out congruences explicitly. All of these should be solvable with time, however.
+
+- Inference of arguments to user-provided proofs
+
+  Consider proving this lemma (one of the steps of the proof of distributivity given above):
+
+  ```agda
+  proofStep : (b + ⌞ c + a * b ⌟) + a * c ≡ (b + (a * b + c)) + a * c
+  ```
+
+  The full proof without using Holes is this:
+
+  ```agda
+  proofStep = cong (λ h → (b + h) + a * c) (+-comm c (a * b))
+  ```
+
+  But Agda can actually infer the second argument to `+-comm` for us:
+
+  ```agda
+  proofStep = cong (λ h → (b + h) + a * c) (+-comm c _)
+  ```
+
+  However, when using Holes, this inference fails:
+
+  ```agda
+  proofStep = cong! (+-comm c _)
+  ```
+
+  Here Agda unfortunately highlights the underscore yellow and complains about unsolved metavariables.
