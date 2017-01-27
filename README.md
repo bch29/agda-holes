@@ -176,3 +176,9 @@ There are currently a few limitations of using this library compared to writing 
   ```
 
   Here Agda unfortunately highlights the underscore yellow and complains about unsolved metavariables.
+
+- Extraction of arguments from an equality relation type is unsophisticated
+
+  For propositional equality (and general congruence) the type of the goal must always take the form `LHS ≈ RHS` for your relation `_≈_`. This might be problematic as the standard library's definition of preorder reasoning uses wrapping datatypes that break this assumption (pre-normalisation). However, there is a special definition for propositional equality, so Holes works fine there.
+
+  For the 'limited congruence' case, the final two arguments of the highest level application in the goal type are assumed to be the LHS and RHS of the goal, respectively. This seems to work most of the time.
