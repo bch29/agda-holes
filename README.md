@@ -87,6 +87,8 @@ myLemma a b c = cong! (+-comm b c)
 
 Notice that `⌞_⌟` is wrapped around the part of the expression that we want to rewrite in the left hand side. The goal type to the right of the `=` is `a + ⌞ b + c ⌟ ≡ a + (c + b)`, which is equivalent to `a + (b + c) ≡ a + (c + b)`. The argument to `cong!` is just the proof needed to perform the rewriting, assuming we are inside the 'hole'. The rest is done by `cong!`.
 
+In addition to performing congruence automatically, it performs symmetry too: you can provide the proof in either direction, and if necessary symmetry is applied.
+
 This works particularly well in conjunction with equational reasoning, as demonstrated above.
 
 ### Propositional Equality ###
@@ -141,6 +143,42 @@ Write your proofs as usual, but making use of the `cong!` macro.
 
 In order to use this library for proofs about equalities that _don't_ have a general `cong` theorem available, you have to provide it with a database of specific congruences that it can use.
 
-This is currently a work in progress. It works but with some problems. See the file `src/Holes/Test/Limited.agda` for a few examples of usage.
+This is currently a work in progress. It works but is somewhat cumbersome. See the file `src/Holes/Test/Limited.agda` for a few examples of usage.
 
+## Limitations
 
+There are currently a few limitations of using this library compared to writing out congruences explicitly. All of these should be solvable with time, however.
+
+- Inference of arguments to user-provided proofs
+
+  Consider proving this lemma (one of the steps of the proof of distributivity given above):
+
+  ```agda
+  proofStep : (b + ⌞ c + a * b ⌟) + a * c ≡ (b + (a * b + c)) + a * c
+  ```
+
+  The full proof without using Holes is this:
+
+  ```agda
+  proofStep = cong (λ h → (b + h) + a * c) (+-comm c (a * b))
+  ```
+
+  But Agda can actually infer the second argument to `+-comm` for us:
+
+  ```agda
+  proofStep = cong (λ h → (b + h) + a * c) (+-comm c _)
+  ```
+
+  However, when using Holes, this inference fails:
+
+  ```agda
+  proofStep = cong! (+-comm c _)
+  ```
+
+  Here Agda unfortunately highlights the underscore yellow and complains about unsolved metavariables.
+
+- Extraction of arguments from an equality relation type is unsophisticated
+
+  For propositional equality (and general congruence) the type of the goal must always take the form `LHS ≈ RHS` for your relation `_≈_`. This might be problematic as the standard library's definition of preorder reasoning uses wrapping datatypes that break this assumption (pre-normalisation). However, there is a special definition for propositional equality, so Holes works fine there.
+
+  For the 'limited congruence' case, the final two arguments of the highest level application in the goal type are assumed to be the LHS and RHS of the goal, respectively. This seems to work most of the time.

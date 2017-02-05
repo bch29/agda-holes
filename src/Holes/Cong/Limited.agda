@@ -38,7 +38,9 @@ ArgPlace = ℕ
 
 private
   data CongErr : Set where
-    typeNotEquivalence noHole appliedVar metaOnPath piOnPath lamOnPath : CongErr
+    termsDontMatch : CongErr
+    typeNotEquivalence noHole appliedVar : CongErr
+    metaOnPath piOnPath lamOnPath : CongErr
     noCongAvailable : Name → ArgPlace → CongErr
     holeyErr : HoleyErr → CongErr
 
@@ -61,6 +63,7 @@ private
     ∷ []
 
   printCongErr : Term → CongErr → List ErrorPart
+  printCongErr goalLhs termsDontMatch = strErr "This is a bug. There was an attempt to create a path based on non-matching terms." ∷ []
   printCongErr goalLhs typeNotEquivalence = strErr "The goal type does not appear to be a binary relation." ∷ []
   printCongErr goalLhs noHole = strErr "There is no hole the goal LHS." ∷ []
   printCongErr goalLhs appliedVar = strErr "Variable applications in the goal LHS are not supported." ∷ []
@@ -76,7 +79,7 @@ private
 
   data HolePath : Set where
     hole : HolePath
-    app : (nm : Name) (index : ℕ) → HolePath → HolePath
+    app : (nm : Name) (index : ℕ) (allArgs : List (Arg Term)) → HolePath → HolePath
 
 module AutoCong (database : List (Name × ArgPlace × Congruence)) where
 
@@ -97,38 +100,42 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
     findOk fail f (x ∷ xs) | err e | ok (n , r) = ok (1 + n , r)
     findOk fail f (x ∷ xs) | err e | err _ = err e
 
+    zipArglists : ∀ {A B : Set} → List (Arg A) → List (Arg B) → List (Arg (A × B))
+    zipArglists xs ys = map (λ { (arg i x , arg _ y) → arg i (x , y)}) (zip xs ys)
+
     mutual
-      findHole : List (Arg HoleyTerm) → Result CongErr (ℕ × HolePath)
-      findHole = findOk noHole (λ { (arg i t) → buildPath t })
+      findHole : List (Arg (Term × HoleyTerm)) → Result CongErr (ℕ × HolePath)
+      findHole = findOk noHole (λ { (arg i (t , h)) → buildPath t h })
 
       {-# TERMINATING #-}
-      buildPath : HoleyTerm → Result CongErr HolePath
-      buildPath (hole args) = return hole
-      buildPath (lit l) = err noHole
-      buildPath (var _ _) = err appliedVar
-      buildPath (con nm args) =
-        findHole args >>=² λ argPlace nextPath →
-        return (app nm argPlace nextPath)
-      buildPath (def nm args) =
-        findHole args >>=² λ argPlace nextPath →
-        return (app nm argPlace nextPath)
-      buildPath (lam _ _) = err lamOnPath
-      buildPath (pi _ _) = err piOnPath
-      buildPath (meta _ _) = err metaOnPath
+      buildPath : Term → HoleyTerm → Result CongErr HolePath
+      buildPath original (hole args) = return hole
+      buildPath original (lit l) = err noHole
+      buildPath original (var _ _) = err appliedVar
+      buildPath (con _ originalArgs) (con nm args) =
+        findHole (zipArglists originalArgs args) >>=² λ argPlace nextPath →
+        return (app nm argPlace originalArgs nextPath)
+      buildPath (def _ originalArgs) (def nm args) =
+        findHole (zipArglists originalArgs args) >>=² λ argPlace nextPath →
+        return (app nm argPlace originalArgs nextPath)
+      buildPath original (lam _ _) = err lamOnPath
+      buildPath original (pi _ _) = err piOnPath
+      buildPath original (meta _ _) = err metaOnPath
+      buildPath _ _ = err termsDontMatch
 
     pathToCong : HolePath → Term → Result CongErr Term
     pathToCong hole eq = return eq
-    pathToCong (app nm argPlace hp) eq =
-      okOr (noCongAvailable nm argPlace) (findCong nm argPlace) >>= λ cong →
+    pathToCong (app nm argPlace allArgs hp) eq =
+      liftMaybe (noCongAvailable nm argPlace) (findCong nm argPlace) >>= λ cong →
       pathToCong hp eq >>= λ rec →
-      return (def (quote id) (basicArg cong ∷ basicArg rec ∷ []))
+      return (def (quote id) (basicArg cong ∷ allArgs ++ (basicArg rec ∷ [])))
 
     autoCong : Term → Term → RTC CongErr ⊤
     autoCong equiv goal =
       liftTC (inferType goal) >>= λ goalType →
       liftMaybe typeNotEquivalence (decomposeEquiv goalType) >>=² λ goalLhs goalRhs →
       liftResult (mapErr holeyErr (termToHoley goalLhs)) >>= λ holeyLhs →
-      liftResult (buildPath holeyLhs) >>= λ lhsPath →
+      liftResult (buildPath goalLhs holeyLhs) >>= λ lhsPath →
       liftResult (pathToCong lhsPath equiv) >>= λ congTerm →
       liftTC (unify congTerm goal)
       -- liftTC (typeError (termErr congTerm ∷ []))

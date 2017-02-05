@@ -103,6 +103,17 @@ length : ∀ {a}{A : Set a} → List A → ℕ
 length [] = 0
 length (_ ∷ xs) = suc (length xs)
 
+zip : ∀ {a b}{A : Set a}{B : Set b} → List A → List B → List (A × B)
+zip [] _ = []
+zip _ [] = []
+zip (x ∷ xs) (y ∷ ys) = (x , y) ∷ zip xs ys
+
+infixr 6 _++_
+
+_++_ : ∀ {a}{A : Set a} → List A → List A → List A
+[] ++ ys = ys
+(x ∷ xs) ++ ys = x ∷ xs ++ ys
+
 --------------------------------------------------------------------------------
 --  Nat operations
 --------------------------------------------------------------------------------
@@ -293,19 +304,28 @@ instance
 
 record MonadThrow {a e} (E : Set e) (M : Set a → Set a) : Set (lsuc a ⊔ e) where
   field
+    {{monad}} : RawMonad M
     throw : ∀ {A : Set a} → E → M A
 
 open MonadThrow {{...}} public
 
 instance
   Maybe-MonadThrow : ∀ {a} → MonadThrow {a} ⊤ Maybe
-  MonadThrow.throw Maybe-MonadThrow tt = nothing
+  Maybe-MonadThrow = record { throw = λ _ → nothing }
 
   Result-MonadThrow : ∀ {ℓ} {E : Set ℓ} → MonadThrow {ℓ} E (Result E)
-  MonadThrow.throw Result-MonadThrow x = err x
+  Result-MonadThrow = record { throw = err }
 
   RTC-MonadThrow : ∀ {ℓ} {E : Set ℓ} → MonadThrow {ℓ} E (RTC E)
-  tryRunRTC (MonadThrow.throw RTC-MonadThrow x) = return (err x)
+  RTC-MonadThrow = record { throw = λ e → record { tryRunRTC = return (err e) } }
+
+liftResult : ∀ {e ℓ} {E : Set e} {M : Set ℓ → Set ℓ} {{monadThrow : MonadThrow E M}} {A : Set ℓ} → Result E A → M A
+liftResult (ok x) = return x
+liftResult (err e) = throw e
+
+liftMaybe : ∀ {e ℓ}{E : Set e} {M : Set ℓ → Set ℓ} {{monadThrow : MonadThrow E M}} {A : Set ℓ} → E → Maybe A → M A
+liftMaybe error (just x) = return x
+liftMaybe error nothing = throw error
 
 --------------------------------------------------------------------------------
 --  Choice and instances
@@ -355,10 +375,6 @@ discardErr : ∀ {e r} {E : Set e}{R : Set r} → Result E R → Maybe R
 discardErr (ok x) = just x
 discardErr (err _) = nothing
 
-okOr : ∀ {e r} {E : Set e} {R : Set r} → E → Maybe R → Result E R
-okOr e (just x) = ok x
-okOr e nothing = err e
-
 result : ∀ {e r a}{E : Set e}{R : Set r}{A : Set a} → (E → A) → (R → A) → Result E R → A
 result g f (ok x) = f x
 result g f (err e) = g e
@@ -387,13 +403,6 @@ mapM-arg {{monad}} f (arg i x) = f x >>= return ∘ arg i
 
 liftTC : ∀ {e r} {E : Set e}{R : Set r} → TC R → RTC E R
 tryRunRTC (liftTC x) = x >>=′ return ∘ ok
-
-liftResult : ∀ {e r} {E : Set e}{R : Set r} → Result E R → RTC E R
-tryRunRTC (liftResult x) = return x
-
-liftMaybe : ∀ {ℓ}{R : Set ℓ}{E : Set ℓ} → E → Maybe R → RTC E R
-liftMaybe error (just x) = return x
-liftMaybe error nothing = throw error
 
 mapRtcErr : ∀ {ℓ}{R E E′ : Set ℓ} → (E → E′) → RTC E R → RTC E′ R
 tryRunRTC (mapRtcErr f x) = tryRunRTC x >>= return ∘ mapErr f
