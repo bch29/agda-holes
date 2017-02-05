@@ -1,13 +1,13 @@
 module Holes.Test.Limited where
 
 open import Holes.Prelude hiding (_⊛_)
+open import Holes.Util
 open import Holes.Term
 open import Holes.Cong.Limited
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 
 module Contrived where
-
   infixl 5 _⊕_
   infixl 6 _⊛_
   infix 4 _≈_
@@ -49,17 +49,12 @@ module Contrived where
   - The equation to do the local rewriting must be the next explicit argument
   -}
 
-  ⊕-cong₁ : ∀ a b {a′} → a ≈ a′ → a ⊕ b ≈ a′ ⊕ b
-  ⊕-cong₁ _ _ = flip ⊕-cong ≈-refl
+  open CongSplit _≈_ ≈-refl
 
-  ⊕-cong₂ : ∀ a b {b′} → b ≈ b′ → a ⊕ b ≈ a ⊕ b′
-  ⊕-cong₂ _ _ = ⊕-cong ≈-refl
-
-  ⊛-cong₁ : ∀ a b {a′} → a ≈ a′ → a ⊛ b ≈ a′ ⊛ b
-  ⊛-cong₁ _ _ = flip ⊛-cong ≈-refl
-
-  ⊛-cong₂ : ∀ a b {b′} → b ≈ b′ → a ⊛ b ≈ a ⊛ b′
-  ⊛-cong₂ _ _ = ⊛-cong ≈-refl
+  ⊕-cong₁ = two→one₁ ⊕-cong
+  ⊕-cong₂ = two→one₂ ⊕-cong
+  ⊛-cong₁ = two→one₁ ⊛-cong
+  ⊛-cong₂ = two→one₂ ⊛-cong
 
   succ-cong′ : ∀ n {n′} → n ≈ n′ → succ n ≈ succ n′
   succ-cong′ _ = succ-cong
