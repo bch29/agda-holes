@@ -70,11 +70,11 @@ module Contrived where
   -}
 
   database
-    = (quote _⊕_ , 0 , quote-term ⊕-cong₁)
-    ∷ (quote _⊕_ , 1 , quote-term ⊕-cong₂)
-    ∷ (quote _⊛_ , 0 , quote-term ⊛-cong₁)
-    ∷ (quote _⊛_ , 1 , quote-term ⊛-cong₂)
-    ∷ (quote succ , 0 , quote-term succ-cong′)
+    = (quote _⊕_ , 0 , quote ⊕-cong₁)
+    ∷ (quote _⊕_ , 1 , quote ⊕-cong₂)
+    ∷ (quote _⊛_ , 0 , quote ⊛-cong₁)
+    ∷ (quote _⊛_ , 1 , quote ⊛-cong₂)
+    ∷ (quote succ , 0 , quote succ-cong′)
     ∷ []
 
   open AutoCong database
@@ -115,9 +115,9 @@ module Propositional (+-comm : ∀ a b → a + b ≡ b + a) where
   suc-cong _ refl = refl
 
   database
-    = (quote _+_ , 0 , quote-term +-cong₁)
-    ∷ (quote _+_ , 1 , quote-term +-cong₂)
-    ∷ (quote suc , 0 , quote-term suc-cong)
+    = (quote _+_ , 0 , quote +-cong₁)
+    ∷ (quote _+_ , 1 , quote +-cong₂)
+    ∷ (quote suc , 0 , quote suc-cong)
     ∷ []
 
   open AutoCong database

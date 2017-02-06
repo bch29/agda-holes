@@ -69,24 +69,6 @@ private
         ∷ basicArg equality    -- i ≈ j
         ∷ [])
 
-  printHoleyErr : Term → HoleyErr → List ErrorPart
-  printHoleyErr goalLhs noHole
-    = strErr "LHS of goal type contains no hole:"
-    ∷ termErr goalLhs
-    ∷ []
-  printHoleyErr goalLhs (unsupportedTerm x)
-    = strErr "Goal type's LHS"
-    ∷ termErr goalLhs
-    ∷ strErr "contains unsupported term"
-    ∷ termErr x
-    ∷ []
-  printHoleyErr goalLhs mismatched-hole-terms
-    = strErr "Holey-fied version of goal LHS failed to unify with the original."
-    ∷ strErr "Check that every hole has an identical term in it."
-    ∷ strErr "Offending term:"
-    ∷ termErr goalLhs
-    ∷ []
-
   autoCongWithType : Term → Type → TC Term
   autoCongWithType equality-term target-type =
     -- Try to decompose the goal type, which should be of the form `x ≡ y`, into

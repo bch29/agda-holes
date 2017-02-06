@@ -39,34 +39,24 @@ ArgPlace = ℕ
 private
   data CongErr : Set where
     termsDontMatch : CongErr
-    typeNotEquivalence noHole appliedVar : CongErr
+    typeNotEquivalence noHole : CongErr
+    appliedVar : (goalLhs : Term) → CongErr
     metaOnPath piOnPath lamOnPath : CongErr
     noCongAvailable : Name → ArgPlace → CongErr
     holeyErr : (goalLhs : Term) (holeyErr : HoleyErr) → CongErr
 
-  printHoleyErr : Term → HoleyErr → List ErrorPart
-  printHoleyErr goalLhs noHole
-    = strErr "LHS of goal type contains no hole:"
-    ∷ termErr goalLhs
-    ∷ []
-  printHoleyErr goalLhs (unsupportedTerm x)
-    = strErr "Goal type's LHS"
-    ∷ termErr goalLhs
-    ∷ strErr "contains unsupported term"
-    ∷ termErr x
-    ∷ []
-  printHoleyErr goalLhs mismatched-hole-terms
-    = strErr "Holey-fied version of goal LHS failed to unify with the original."
-    ∷ strErr "Check that every hole has an identical term in it."
-    ∷ strErr "Offending term:"
-    ∷ termErr goalLhs
-    ∷ []
+  fillErrLhs : Term → CongErr → CongErr
+  fillErrLhs lhs (appliedVar _) = appliedVar lhs
+  fillErrLhs lhs e = e
 
   printCongErr : CongErr → List ErrorPart
   printCongErr termsDontMatch = strErr "This is a bug. There was an attempt to create a path based on non-matching terms." ∷ []
   printCongErr typeNotEquivalence = strErr "The goal type does not appear to be a binary relation." ∷ []
   printCongErr noHole = strErr "There is no hole the goal LHS." ∷ []
-  printCongErr appliedVar = strErr "Variable applications in the goal LHS are not supported." ∷ []
+  printCongErr (appliedVar goalLhs)
+    = strErr "Variable applications on the path to the hole are not supported. Goal LHS was:"
+    ∷ termErr goalLhs
+    ∷ []
   printCongErr metaOnPath = strErr "Metavariables in the goal LHS are not supported." ∷ []
   printCongErr piOnPath = strErr "Pi types in the goal LHS are not supported." ∷ []
   printCongErr lamOnPath = strErr "Lambdas in the goal LHS are not supported." ∷ []
@@ -111,7 +101,7 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
       buildPath : Term → HoleyTerm → Result CongErr HolePath
       buildPath original (hole args) = return hole
       buildPath original (lit l) = err noHole
-      buildPath original (var _ _) = err appliedVar
+      buildPath original (var x args) = err (appliedVar unknown)
       buildPath (con _ originalArgs) (con nm args) =
         findHole (zipArglists originalArgs args) >>=² λ argPlace nextPath →
         return (app nm argPlace originalArgs nextPath)
@@ -135,10 +125,10 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
       liftTC (inferType goal) >>= λ goalType →
       liftMaybe typeNotEquivalence (decomposeEquiv goalType) >>=² λ goalLhs goalRhs →
       liftResult (mapErr (holeyErr goalLhs) (termToHoley goalLhs)) >>= λ holeyLhs →
-      liftResult (buildPath goalLhs holeyLhs) >>= λ lhsPath →
+      liftResult (mapErr (fillErrLhs (fillHoley′ (λ _ → quote-term ⌞_⌟) holeyLhs)) (buildPath goalLhs holeyLhs)) >>= λ lhsPath →
       liftResult (pathToCong lhsPath equiv) >>= λ congTerm →
       liftTC (unify congTerm goal)
-      -- liftTC (typeError (termErr congTerm ∷ []))
+      -- liftTC (typeError (termErr goalLhs ∷ []))
 
   macro
     cong! : Term → Term → TC ⊤
