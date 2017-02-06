@@ -96,7 +96,9 @@ private
 
   mutual
     argHelper : (List (Arg HoleyTerm) → HoleyTerm) → List (Arg Term) → Result HoleyErr (Maybe Term × HoleyTerm)
-    argHelper build-holey args = mapM-list ((pushArg <$>_) ∘ mapM-arg termToHoleyHelper) args >>= return ∘ mapSecond build-holey ∘ unlist
+    argHelper build-holey args =
+      successes {{Result-MonadCatch}} (map ((pushArg <$>_) ∘ mapM-arg termToHoleyHelper) args) >>=
+      return ∘ mapSecond build-holey ∘ unlist
 
     {-# TERMINATING #-}
     termToHoleyHelper : Term → Result HoleyErr (Maybe Term × HoleyTerm)

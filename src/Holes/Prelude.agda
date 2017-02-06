@@ -284,19 +284,29 @@ open MonadCatch {{...}} public
 
 instance
   Maybe-MonadCatch : ∀ {a} → MonadCatch {a} ⊤ Maybe
-  MonadCatch.catch Maybe-MonadCatch f (just x) = just x
-  MonadCatch.catch Maybe-MonadCatch f nothing = f tt
+  Maybe-MonadCatch = record
+    { catch = λ
+      { f (just x) → just x
+      ; f nothing → f tt
+      }
+    }
 
   Result-MonadCatch : ∀ {ℓ} {E : Set ℓ} → MonadCatch {ℓ} E (Result E)
-  MonadCatch.catch Result-MonadCatch f (ok x) = ok x
-  MonadCatch.catch Result-MonadCatch f (err e) = f e
+  Result-MonadCatch = record
+    { catch = λ
+      { f (err e) → f e
+      ; f (ok x) → ok x}
+    }
 
   RTC-MonadCatch : ∀ {ℓ} {E : Set ℓ} → MonadCatch {ℓ} E (RTC E)
-  tryRunRTC (MonadCatch.catch RTC-MonadCatch f x) =
-    tryRunRTC x >>=
-      λ { (err e) → tryRunRTC (f e)
+  RTC-MonadCatch = record
+    { catch = λ f x → record
+      { tryRunRTC = tryRunRTC x >>= λ
+        { (err e) → tryRunRTC (f e)
         ; (ok y) → return (ok y)
         }
+      }
+    }
 
 --------------------------------------------------------------------------------
 --  MonadThrow and instances
@@ -367,6 +377,12 @@ mapM-list f (x ∷ xs) =
   mapM-list f xs >>= λ ys →
   return (y ∷ ys)
 
+successes : ∀ {ℓ e M} {E : Set e} {{monadCatch : MonadCatch E M}}{{monad : RawMonad M}} {A : Set ℓ} → List (M A) → M (List A)
+successes  [] = return []
+successes {{monadCatch}} {A = A} (x ∷ xs) =
+  successes {{monadCatch}} xs >>= λ xs′ →
+  catch {{monadCatch}} (λ _ → return xs′) (fmap (_∷ xs′) x)
+
 mapErr : ∀ {e r}{R : Set r}{E E′ : Set e} → (E → E′) → Result E R → Result E′ R
 mapErr f (ok x) = ok x
 mapErr f (err e) = err (f e)
@@ -394,12 +410,15 @@ basicArg = arg (arg-info visible relevant)
 implicitArg : Term → Arg Term
 implicitArg = arg (arg-info hidden relevant)
 
+getArg : Arg Term → Term
+getArg (arg _ x) = x
+
 map-arg : ∀ {A B} → (A → B) → Arg A → Arg B
 map-arg f (arg i x) = arg i (f x)
 
 mapM-arg : ∀ {A B M} {{monad : RawMonad M}} → (A → M B) → Arg A → M (Arg B)
 mapM-arg {{monad}} f (arg i x) = f x >>= return ∘ arg i
-  where instance monad′ = monad
+  -- where instance monad′ = monad
 
 liftTC : ∀ {e r} {E : Set e}{R : Set r} → TC R → RTC E R
 tryRunRTC (liftTC x) = x >>=′ return ∘ ok

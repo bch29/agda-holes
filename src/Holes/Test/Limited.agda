@@ -88,6 +88,22 @@ module Contrived where
   test3 : ∀ a b c → succ (a ⊕ ⌞ b ⊕ c ⌟) ≈ succ (a ⊕ (c ⊕ b))
   test3 a b c = cong! (⊕-comm b c)
 
+  -- We can use a proof obtained by pattern matching for `cong!`
+  test5 : ∀ a b c → a ≈ b ⊕ c × b ≈ succ c → succ (⌞ b ⌟ ⊕ c ⊛ a) ≈ succ (succ c ⊕ c ⊛ a)
+  test5 a b c (eq1 , eq2) = cong! eq2
+
+  record ∃ {a p} {A : Set a} (P : A → Set p) : Set (a ⊔ p) where
+    constructor _,_
+
+    field
+      evidence : A
+      proof : P evidence
+
+  -- We can use `cong!` to prove some part of the result even when it depends on
+  -- other parts of the result
+  test6 : ∀ a b c → b ⊕ c ≈ a × b ≈ succ c → ∃ λ x → succ (⌞ b ⊕ x ⌟ ⊕ a) ≈ succ (a ⊕ a)
+  test6 a b c (eq1 , eq2) = c , cong! eq1
+
 module Propositional (+-comm : ∀ a b → a + b ≡ b + a) where
   +-cong₁ : ∀ a b {a′} → a ≡ a′ → a + b ≡ a′ + b
   +-cong₁ _ _ refl = refl
