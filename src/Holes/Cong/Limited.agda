@@ -33,7 +33,7 @@ private
   decomposeEquiv : Term → Maybe (Term × Term)
   decomposeEquiv = join ∘ withArgs (fmap (λ {(arg _ x , arg _ y) → x , y}) ∘ last2)
 
-Congruence = Term
+Congruence = Name
 ArgPlace = ℕ
 
 private
@@ -128,17 +128,7 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
     pathToCong (app nm argPlace allArgs hp) eq =
       liftMaybe (noCongAvailable nm argPlace) (findCong nm argPlace) >>= λ cong →
       pathToCong hp eq >>= λ rec →
-      return (def (quote id) (basicArg cong ∷ allArgs ++ (basicArg rec ∷ [])))
-
--- Goal type's LHS (cmon CommutativeMonoid.∙ ⌞ b ⌟) x
-
-    helper : Term → Maybe (Name × List Term)
-    helper (def n xs) = just (n , map getArg xs)
-    helper _ = nothing
-
-    termsErr : List Term → List ErrorPart
-    termsErr [] = []
-    termsErr (x ∷ xs) = termErr x ∷ strErr "; " ∷ termsErr xs
+      return (def cong (allArgs ++ (basicArg rec ∷ [])))
 
     autoCong : Term → Term → RTC CongErr ⊤
     autoCong equiv goal =
