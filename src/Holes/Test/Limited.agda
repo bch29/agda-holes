@@ -104,6 +104,12 @@ module Contrived where
   test6 : ∀ a b c → b ⊕ c ≈ a × b ≈ succ c → ∃ λ x → succ (⌞ b ⊕ x ⌟ ⊕ a) ≈ succ (a ⊕ a)
   test6 a b c (eq1 , eq2) = c , cong! eq1
 
+  -- Deep nesting
+  test7 : ∀ a b c
+    → succ (a ⊕ succ (b ⊕ succ (c ⊕ succ (a ⊕ succ ⌞ b ⊕ c ⌟))))
+    ≈ succ (a ⊕ succ (b ⊕ succ (c ⊕ succ (a ⊕ succ ⌞ c ⊕ b ⌟))))
+  test7 _ b c = cong! (⊕-comm b c)
+
 module Propositional (+-comm : ∀ a b → a + b ≡ b + a) where
   +-cong₁ : ∀ a b {a′} → a ≡ a′ → a + b ≡ a′ + b
   +-cong₁ _ _ refl = refl
