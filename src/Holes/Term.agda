@@ -30,6 +30,7 @@ data HoleyTerm : Set where
   def : (f : Name) (args : List (Arg HoleyTerm)) → HoleyTerm
   lam : (v : Visibility) (holeyAbs : Abs HoleyTerm) → HoleyTerm
   pi : (a : Arg HoleyTerm) (b : Abs HoleyTerm) → HoleyTerm
+  unknown : HoleyTerm
   meta : (x : Meta) (args : List (Arg HoleyTerm)) → HoleyTerm
 
 data HoleyErr : Set where
@@ -81,6 +82,7 @@ fillHoley freeVarMod binderDepth filler (lam v (abs s holey)) = lam v (abs s (fi
 fillHoley freeVarMod binderDepth filler (pi (arg v a) (abs s b)) =
   pi (arg v (fillHoley freeVarMod binderDepth filler a))
      (abs s (fillHoley freeVarMod (suc binderDepth) filler b))
+fillHoley _ _ _ unknown = unknown
 
 -- Converts a HoleyTerm to a regular term which abstracts a variable that is
 -- used to fill the hole.
@@ -115,7 +117,8 @@ private
   mutual
     argHelper : (List (Arg HoleyTerm) → HoleyTerm) → List (Arg Term) → Result HoleyErr (Maybe Term × HoleyTerm)
     argHelper build-holey args =
-      successes {{Result-MonadCatch}} (map ((pushArg <$>_) ∘ mapM-arg termToHoleyHelper) args) >>=
+      -- successes {{Result-MonadCatch}} (map ((pushArg <$>_) ∘ mapM-arg termToHoleyHelper) args) >>=
+      mapM-list ((pushArg <$>_) ∘ mapM-arg termToHoleyHelper) args >>=
       return ∘ mapSecond build-holey ∘ unlist
 
     {-# TERMINATING #-}
@@ -133,6 +136,7 @@ private
       termToHoleyHelper a >>=² λ t₁ a′ →
       termToHoleyHelper b >>=² λ t₂ b′ →
       return (t₁ <|> t₂ , pi (arg v a′) (abs s b′))
+    termToHoleyHelper unknown | nothing = ok (nothing , unknown)
     ... | _ = err (unsupportedTerm term)
 
 -- If a term has a hole in it, specified by ⌞_⌟ around a subterm, returns a
