@@ -118,12 +118,20 @@ _++_ : ∀ {a}{A : Set a} → List A → List A → List A
 [] ++ ys = ys
 (x ∷ xs) ++ ys = x ∷ xs ++ ys
 
-concat : ∀ {a}{A : Set a} → List (List A) → List A
-concat [] = []
-concat (x ∷ xs) = x ++ concat xs
-
 concatMap : ∀ {a b}{A : Set a}{B : Set b} → (A → List B) → List A → List B
-concatMap f = concat ∘ map f
+concatMap f [] = []
+concatMap f (x ∷ xs) = f x ++ concatMap f xs
+
+concat : ∀ {a}{A : Set a} → List (List A) → List A
+concat = concatMap id
+
+intersperse : ∀ {a}{A : Set a} → A → List A → List A
+intersperse e [] = []
+intersperse e (x ∷ []) = x ∷ []
+intersperse e (x ∷ y ∷ xs) = x ∷ e ∷ intersperse e (y ∷ xs)
+
+intercalate : ∀ {a}{A : Set a} → List A → List (List A) → List A
+intercalate e = concat ∘ intersperse e
 
 --------------------------------------------------------------------------------
 --  Nat operations
@@ -149,6 +157,18 @@ compare (suc .(suc m + k)) (suc .m)           | greater m k = greater (suc m) k
 --------------------------------------------------------------------------------
 --  Typeclasses
 --------------------------------------------------------------------------------
+
+record RawMonoid {f} (M : Set f) : Set f where
+  field
+    _<>_ : M → M → M
+    mempty : M
+
+open RawMonoid {{...}} public
+
+instance
+  listMonoid : ∀ {a} {A : Set a} → RawMonoid (List A)
+  RawMonoid._<>_ listMonoid = _++_
+  RawMonoid.mempty listMonoid = []
 
 record RawMonad {f} (M : Set f → Set f) : Set (lsuc f) where
   infixl 1 _>>=_ _>>_ _>=>_ _>>=²_
@@ -227,6 +247,10 @@ Maybe→Result e (just x) = ok x
 Maybe→Result e nothing = err e
 
 instance
+  List-Monad : ∀ {a} → RawMonad (List {a})
+  RawMonad._>>=_ List-Monad = flip concatMap
+  RawMonad.return List-Monad x = x ∷ []
+
   TC-Monad : ∀ {a} → RawMonad {a} TC
   TC-Monad = record
     { return = returnTC

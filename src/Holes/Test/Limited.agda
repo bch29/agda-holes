@@ -65,7 +65,8 @@ module Contrived where
   - The `Name` is the (reflected) name of the function to which the congruence
     applies.
   - The `ArgPlace` is the index of the argument place that the congruence can
-    rewrite at.
+    rewrite at. Make sure you take into account implicit and instance arguments
+    as well!
   - The `Congruence` is a reflected copy of the congruence function, of type `Term`
   -}
 
@@ -106,8 +107,8 @@ module Contrived where
 
   -- Deep nesting
   test7 : ∀ a b c
-    → succ (a ⊕ succ (b ⊕ succ (c ⊕ succ (a ⊕ succ ⌞ b ⊕ c ⌟))))
-    ≈ succ (a ⊕ succ (b ⊕ succ (c ⊕ succ (a ⊕ succ ⌞ c ⊕ b ⌟))))
+    → succ (a ⊕ succ (b ⊕ succ (c ⊕ succ (succ ⌞ b ⊕ c ⌟ ⊕ (a ⊕ b)))))
+    ≈ succ (a ⊕ succ (b ⊕ succ (c ⊕ succ (succ ⌞ c ⊕ b ⌟ ⊕ (a ⊕ b)))))
   test7 _ b c = cong! (⊕-comm b c)
 
 module Propositional (+-comm : ∀ a b → a + b ≡ b + a) where
