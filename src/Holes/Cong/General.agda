@@ -104,5 +104,3 @@ private
 macro
   cong! : Term → Term → TC ⊤
   cong! = cong!′
-
--- NOTE: If there's no hole, try assuming hole at top level

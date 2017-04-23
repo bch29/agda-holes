@@ -20,6 +20,7 @@ infixr 2 _×_
 infixr 9 _∘_
 infixl 1 _⟨_⟩_
 infixr 0 _$_
+infix 0 case_of_
 
 --------------------------------------------------------------------------------
 --  Datatypes
@@ -71,6 +72,9 @@ curry f x y = f (x , y)
 uncurry : ∀ {a b c}{A : Set a}{B : Set b}{C : Set c} → (A → B → C) → A × B → C
 uncurry f (x , y) = f x y
 
+case_of_ : ∀ {a b}{A : Set a}{B : Set b} → A → (A → B) → B
+case x of f = f x
+
 --------------------------------------------------------------------------------
 --  Boolean operations
 --------------------------------------------------------------------------------
@@ -113,6 +117,13 @@ infixr 6 _++_
 _++_ : ∀ {a}{A : Set a} → List A → List A → List A
 [] ++ ys = ys
 (x ∷ xs) ++ ys = x ∷ xs ++ ys
+
+concat : ∀ {a}{A : Set a} → List (List A) → List A
+concat [] = []
+concat (x ∷ xs) = x ++ concat xs
+
+concatMap : ∀ {a b}{A : Set a}{B : Set b} → (A → List B) → List A → List B
+concatMap f = concat ∘ map f
 
 --------------------------------------------------------------------------------
 --  Nat operations

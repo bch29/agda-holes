@@ -128,7 +128,6 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
       liftResult (mapErr (fillErrLhs (fillHoley′ (λ _ → quote-term ⌞_⌟) holeyLhs)) (buildPath goalLhs holeyLhs)) >>= λ lhsPath →
       liftResult (pathToCong lhsPath equiv) >>= λ congTerm →
       liftTC (unify congTerm goal)
-      -- liftTC (typeError (termErr goalLhs ∷ []))
 
   macro
     cong! : Term → Term → TC ⊤

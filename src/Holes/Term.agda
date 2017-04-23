@@ -152,11 +152,6 @@ termToHoley′ term with termToHoleyHelper term
 ... | ok (nothing , h) = ok (term , hole [])
 ... | err e = err e
 
--- A variant of `term-toHole` that also returns the term in the hole, and
--- checks that the holey term is valid by unifying it with the original term.
--- The list of error parts given is thrown as a type error if the term could not
--- be converted to a holey term.
-
 checkedTermToHoley : Term → RTC HoleyErr (Term × HoleyTerm)
 checkedTermToHoley term =
   liftResult (termToHoley′ term) >>=² λ hole-term holey →
@@ -165,9 +160,16 @@ checkedTermToHoley term =
   throw mismatchedHoleTerms >>= λ _ →
   return (hole-term , holey)
 
+-- A variant of `termToHoley` that also returns the term in the hole, and
+-- checks that the holey term is valid by unifying it with the original term.
+-- The list of error parts given is thrown as a type error if the term could not
+-- be converted to a holey term.
+
 checkedTermToHoley′ : (HoleyErr → List ErrorPart) → Term → TC (Term × HoleyTerm)
-checkedTermToHoley′ error term =
-  runRTC (typeError ∘ error) $ checkedTermToHoley term
+checkedTermToHoley′ error =
+  runRTC (typeError ∘ error) ∘ checkedTermToHoley
+
+-- These macros are useful for debugging and testing
 
 macro
   -- Given a holey term, expands to a function which accepts something to go in
@@ -188,7 +190,8 @@ macro
     checkedTermToHoley′ (λ _ → strErr "Unsupported term for holiness or no hole:"
                                 ∷ termErr term
                                 ∷ []) term >>=² λ _ result →
-    quoteTC (holeyToLam result) >>= unify target
+    quoteTC (holeyToLam result) >>=
+    unify target
 
   -- Quotes a holey term, reifying its abstract syntax tree.
 
