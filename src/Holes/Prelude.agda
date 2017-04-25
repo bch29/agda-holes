@@ -112,6 +112,11 @@ zip [] _ = []
 zip _ [] = []
 zip (x ∷ xs) (y ∷ ys) = (x , y) ∷ zip xs ys
 
+unzip : ∀ {a b}{A : Set a}{B : Set b} → List (A × B) → List A × List B
+unzip [] = [] , []
+unzip ((x , y) ∷ xys) with unzip xys
+... | xs , ys = x ∷ xs , y ∷ ys
+
 infixr 6 _++_
 
 _++_ : ∀ {a}{A : Set a} → List A → List A → List A
@@ -153,6 +158,11 @@ compare (suc m) (suc n) with compare m n
 compare (suc .m)           (suc .(suc m + k)) | less    m k = less    (suc m) k
 compare (suc .m)           (suc .m)           | equal   m   = equal   (suc m)
 compare (suc .(suc m + k)) (suc .m)           | greater m k = greater (suc m) k
+
+_<?_ : ℕ → ℕ → Bool
+x <? y with compare x y
+... | Ordering.less .x _ = true
+... | _ = false
 
 --------------------------------------------------------------------------------
 --  Typeclasses
@@ -458,8 +468,14 @@ implicitArg = arg (arg-info hidden relevant)
 getArg : Arg Term → Term
 getArg (arg _ x) = x
 
-map-arg : ∀ {A B} → (A → B) → Arg A → Arg B
-map-arg f (arg i x) = arg i (f x)
+mapArg : ∀ {A B} → (A → B) → Arg A → Arg B
+mapArg f (arg i x) = arg i (f x)
+
+getArglist : Term → List (Arg Term)
+getArglist (def _ args) = args
+getArglist (con _ args) = args
+getArglist (var _ args) = args
+getArglist _ = []
 
 instance
   traversableArg : RawTraversable Arg

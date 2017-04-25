@@ -56,6 +56,10 @@ printHoleyErr goalLhs mismatched-hole-terms
   ∷ termErr goalLhs
   ∷ []
 
+private
+  mapArglist : {A B : Set} → (A → B) → List (Arg A) → List (Arg B)
+  mapArglist = map ∘ mapArg
+
 -- Converts a HoleyTerm to a regular term by filling in the hole with some other
 -- given term which is a function of the number of binders encountered on the
 -- way to the hole.
@@ -66,23 +70,22 @@ printHoleyErr goalLhs mismatched-hole-terms
 
 {-# TERMINATING #-}
 fillHoley : (ℕ → ℕ) → ℕ → (ℕ → List (Arg Term) → Term) → HoleyTerm → Term
-fillHoley freeVarMod binderDepth filler (hole args) = filler binderDepth args
-fillHoley _ _ _ (lit l) = lit l
-fillHoley freeVarMod binderDepth filler (var x args) with compare x binderDepth
--- If a variable's De Bruijn index is less than the current binder depth then it
--- is bound and should not be modified.
-fillHoley freeVarMod _ filler (var x args) | Ordering.less .x k = var x (map (map-arg (fillHoley freeVarMod (suc (x + k)) filler)) args)
--- If a variable's De Bruijn index is >= the current binder depth then it is
--- free and should be modified.
-... | _ = var (freeVarMod x) (map (map-arg (fillHoley freeVarMod binderDepth filler)) args)
-fillHoley freeVarMod binderDepth filler (con c args) = con c (map (map-arg (fillHoley freeVarMod binderDepth filler)) args)
-fillHoley freeVarMod binderDepth filler (def f args) = def f (map (map-arg (fillHoley freeVarMod binderDepth filler)) args)
-fillHoley freeVarMod binderDepth filler (meta x args) = meta x (map (map-arg (fillHoley freeVarMod binderDepth filler)) args)
-fillHoley freeVarMod binderDepth filler (lam v (abs s holey)) = lam v (abs s (fillHoley freeVarMod (suc binderDepth) filler holey))
-fillHoley freeVarMod binderDepth filler (pi (arg v a) (abs s b)) =
-  pi (arg v (fillHoley freeVarMod binderDepth filler a))
-     (abs s (fillHoley freeVarMod (suc binderDepth) filler b))
-fillHoley _ _ _ unknown = unknown
+fillHoley freeVarMod binderDepth filler = go binderDepth
+  where
+  go : ℕ → HoleyTerm → Term
+  go depth (hole args) = filler depth args
+  go _ (lit l) = lit l
+  go depth (var x args) =
+    let freeVar = not (x <? depth)
+    in var (if freeVar then freeVarMod x else x) (mapArglist (go depth) args)
+  go depth (con c args) = con c (mapArglist (go depth) args)
+  go depth (def f args) = def f (mapArglist (go depth) args)
+  go depth (meta x args) = meta x (mapArglist (go depth) args)
+  go depth (lam v (abs s holey)) = lam v (abs s (go depth holey))
+  go depth (pi (arg v a) (abs s b)) =
+    pi (arg v (go depth a))
+       (abs s (go depth b))
+  go _ unknown = unknown
 
 -- Converts a HoleyTerm to a regular term which abstracts a variable that is
 -- used to fill the hole.
@@ -103,39 +106,34 @@ fillHoley′ : (List (Arg Term) → Term) → HoleyTerm → Term
 fillHoley′ filler = fillHoley id 0 (λ _ → filler)
 
 private
-  unlist : ∀ {a b}{A : Set a}{B : Set b} → List (Maybe A × B) → Maybe A × List B
-  unlist [] = nothing , []
-  unlist (x ∷ xs) with x | unlist xs
-  ... | head-term , h | tail-term , hs = tail-term <|> head-term , h ∷ hs
-
-  mapSecond : ∀ {a b c}{A : Set a}{B : Set b}{C : Set c} → (B → C) → A × B → A × C
-  mapSecond f (x , y) = x , f y
+  mapPair : ∀ {a b x y}{A : Set a}{B : Set b}{X : Set x}{Y : Set y} → (A → X) → (B → Y) → A × B → X × Y
+  mapPair f g (x , y) = f x , g y
 
   pushArg : ∀ {A B : Set} → Arg (A × B) → A × Arg B
   pushArg (arg i (x , y)) = x , arg i y
 
   mutual
-    argHelper : (List (Arg HoleyTerm) → HoleyTerm) → List (Arg Term) → Result HoleyErr (Maybe Term × HoleyTerm)
-    argHelper build-holey args =
-      traverse ((pushArg <$>_) ∘ traverse termToHoleyHelper) args >>=
-      return ∘ mapSecond build-holey ∘ unlist
+    argHelper : (List (Arg HoleyTerm) → HoleyTerm) → List (Arg Term) → Result HoleyErr (List Term × HoleyTerm)
+    argHelper buildHoley
+      = fmap (mapPair concat buildHoley ∘ unzip)
+      ∘ traverse (fmap pushArg ∘ traverse termToHoleyHelper)
 
     {-# TERMINATING #-}
-    termToHoleyHelper : Term → Result HoleyErr (Maybe Term × HoleyTerm)
+    termToHoleyHelper : Term → Result HoleyErr (List Term × HoleyTerm)
     termToHoleyHelper term with toHole term
-    termToHoleyHelper term | just args = ok (just term , hole args)
-    termToHoleyHelper (lit l) | nothing = ok (nothing , lit l)
+    termToHoleyHelper term | just args = ok (term ∷ [] , hole args)
+    termToHoleyHelper (lit l) | nothing = ok ([] , lit l)
     termToHoleyHelper (var x args) | nothing = argHelper (var x) args
     termToHoleyHelper (con c args) | nothing = argHelper (con c) args
     termToHoleyHelper (def f args) | nothing = argHelper (def f) args
     termToHoleyHelper (meta x args) | nothing = argHelper (meta x) args
     termToHoleyHelper (lam v (abs s t)) | nothing =
-      termToHoleyHelper t >>= return ∘ mapSecond (λ h → lam v (abs s h))
+      mapPair id (λ h → lam v (abs s h)) <$> termToHoleyHelper t
     termToHoleyHelper (pi (arg v a) (abs s b)) | nothing =
-      termToHoleyHelper a >>=² λ t₁ a′ →
-      termToHoleyHelper b >>=² λ t₂ b′ →
-      return (t₁ <|> t₂ , pi (arg v a′) (abs s b′))
-    termToHoleyHelper unknown | nothing = ok (nothing , unknown)
+      termToHoleyHelper a >>=² λ ts₁ a′ →
+      termToHoleyHelper b >>=² λ ts₂ b′ →
+      return (ts₁ ++ ts₂ , pi (arg v a′) (abs s b′))
+    termToHoleyHelper unknown | nothing = ok ([] , unknown)
     ... | _ = err (unsupportedTerm term)
 
 -- If a term has a hole in it, specified by ⌞_⌟ around a subterm, returns a
@@ -150,9 +148,9 @@ termToHoley term = proj₂ <$> termToHoleyHelper term
 
 termToHoley′ : Term → Result HoleyErr (Term × HoleyTerm)
 termToHoley′ term with termToHoleyHelper term
-... | ok (just t , h) = ok (t , h)
+... | ok (t ∷ _ , h) = ok (t , h)
 -- If there is no hole, the whole thing is the hole
-... | ok (nothing , h) = ok (term , hole [])
+... | ok ([] , h) = ok (term , hole [])
 ... | err e = err e
 
 checkedTermToHoley : Term → RTC HoleyErr (Term × HoleyTerm)

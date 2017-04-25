@@ -178,12 +178,6 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
       liftResult (pathToCong lhsPath equiv) >>= λ congTerm →
       liftTC (unify congTerm goal)
 
-    getArglist : Term → List (Arg Term)
-    getArglist (def _ args) = args
-    getArglist (con _ args) = args
-    getArglist (var _ args) = args
-    getArglist _ = []
-
     autoCongDebug : Term → Term → RTC (List CongErr) ⊤
     autoCongDebug equiv goal =
       liftTC (inferType goal) >>= λ goalType →
