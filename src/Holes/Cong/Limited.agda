@@ -24,14 +24,17 @@ private
   last2 (x ∷ xs) = last2 xs
   last2 _ = nothing
 
-  withArgs : ∀ {ℓ} {A : Set ℓ} → (List (Arg Term) → A) → Term → Maybe A
-  withArgs f (con _ args) = just (f args)
-  withArgs f (def _ args) = just (f args)
-  withArgs f (var _ args) = just (f args)
-  withArgs f _ = nothing
+  getArgs : Term → Maybe (List (Arg Term))
+  getArgs (con _ args) = just args
+  getArgs (def _ args) = just args
+  getArgs (var _ args) = just args
+  getArgs _ = nothing
 
   decomposeEquiv : Term → Maybe (Term × Term)
-  decomposeEquiv = join ∘ withArgs (fmap (λ {(arg _ x , arg _ y) → x , y}) ∘ last2)
+  decomposeEquiv tm =
+    getArgs tm >>= λ args →
+    last2 args >>=² λ x y →
+    return (getArg x , getArg y)
 
 Congruence = Name
 ArgPlace = ℕ
@@ -104,13 +107,20 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
                       (argPlace =ℕ? argPlace′) }))
         database
 
-    findOk : ∀ {a e r} {A : Set a} {E : Set e} {{errMonoid : RawMonoid E}} {R : Set r} → (A → Result E R) → List A → Result E (ℕ × R)
-    findOk f [] = err mempty
-    findOk f (x ∷ xs) with f x
-    findOk f (x ∷ xs) | ok r = ok (0 , r)
-    findOk f (x ∷ xs) | err e with findOk f xs
-    findOk f (x ∷ xs) | err e | ok (n , r) = ok (1 + n , r)
-    findOk f (x ∷ xs) | err e₁ | err e₂ = err (e₁ <> e₂)
+    -- Tries to apply the given function to each element of the list, and
+    -- returns the first successful result. If none of the results are
+    -- successful, accumulates the errors using the error monoid.
+
+    findOk : ∀ {a e r} {A : Set a} {E : Set e} {{errMonoid : RawMonoid E}} {R : Set r} → (ℕ → A → Result E R) → List A → Result E R
+    findOk {A = A}{E}{R} = go 0
+      where
+        go : ℕ → (ℕ → A → Result E R) → List A → Result E R
+        go i f [] = err mempty
+        go i f (x ∷ xs) with f i x
+        ... | ok y = ok y
+        ... | err e₁ with go (1 + i) f xs
+        ... | ok y = ok y
+        ... | err e₂ = err (e₁ <> e₂)
 
     _=Visibility?_ : Visibility → Visibility → Bool
     visible =Visibility? visible = true
@@ -131,12 +141,7 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
 
     mutual
       findHole : ℕ → List (Arg (Term × HoleyTerm)) → Result (List CongErr) (ℕ × HolePath)
-      findHole depth = findOk (λ { (arg i (t , h)) → buildPath depth t h })
-
-      -- original:
-      -- PathAlgebra._+_ dijkstra c (PathAlgebra._+_ dijkstra ⌞ PathAlgebra._+_ dijkstra b d ⌟ e)
-      -- holey:
-      -- PathAlgebra._+_ dijkstra c (PathAlgebra._+_ dijkstra ⌞_⌟ e)
+      findHole depth = findOk (λ { n (arg i (t , h)) → (n ,_) <$> buildPath depth t h })
 
       {-# TERMINATING #-}
       buildPath : ℕ → Term → HoleyTerm → Result (List CongErr) HolePath
@@ -173,16 +178,14 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
       liftResult (pathToCong lhsPath equiv) >>= λ congTerm →
       liftTC (unify congTerm goal)
 
-    -- debug version
-
     getArglist : Term → List (Arg Term)
     getArglist (def _ args) = args
     getArglist (con _ args) = args
     getArglist (var _ args) = args
     getArglist _ = []
 
-    autoCong′ : Term → Term → RTC (List CongErr) ⊤
-    autoCong′ equiv goal =
+    autoCongDebug : Term → Term → RTC (List CongErr) ⊤
+    autoCongDebug equiv goal =
       liftTC (inferType goal) >>= λ goalType →
       liftMaybe (typeNotEquivalence ∷ []) (decomposeEquiv goalType) >>=² λ goalLhs goalRhs →
       liftResult (mapErr ((_∷ []) ∘ holeyErr goalLhs) (termToHoley goalLhs)) >>= λ holeyLhs →
@@ -202,5 +205,5 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
 
     -- debug version
 
-    cong!′ : Term → Term → TC ⊤
-    cong!′ equiv = runRtcOrTypeError printCongErrs ∘ autoCong′ equiv
+    cong!Debug : Term → Term → TC ⊤
+    cong!Debug equiv = runRtcOrTypeError printCongErrs ∘ autoCongDebug equiv

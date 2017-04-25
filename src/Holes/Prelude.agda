@@ -206,6 +206,22 @@ record RawMonad {f} (M : Set f → Set f) : Set (lsuc f) where
   _⊛_ : ∀ {A B} → M (A → B) → M A → M B
   f ⊛ x = f >>= flip fmap x
 
+open RawMonad {{...}} public
+
+record RawTraversable {t} (T : Set t → Set t) : Set (lsuc t) where
+  field
+    traverse : {M : Set t → Set t} {{monad : RawMonad M}} {A B : Set t} → (A → M B) → T A → M (T B)
+
+  sequence : {M : Set t → Set t} {{monad : RawMonad M}} {A : Set t} → T (M A) → M (T A)
+  sequence = traverse id
+
+open RawTraversable {{...}} public
+
+instance
+  traversableList : ∀ {t} → RawTraversable (List {t})
+  traverse {{traversableList}} f [] = return []
+  traverse {{traversableList}} f (x ∷ xs) = _∷_ <$> f x ⊛ traverse f xs
+
 --------------------------------------------------------------------------------
 --  Propositional Equality
 --------------------------------------------------------------------------------
@@ -229,8 +245,6 @@ module PropEq where
 --------------------------------------------------------------------------------
 --  Monads and useful instances
 --------------------------------------------------------------------------------
-
-open RawMonad {{...}} public
 
 infixl 1 _>>=′_
 
@@ -364,6 +378,9 @@ instance
   RTC-MonadThrow : ∀ {ℓ} {E : Set ℓ} → MonadThrow {ℓ} E (RTC E)
   RTC-MonadThrow = record { throw = λ e → record { tryRunRTC = return (err e) } }
 
+  TC-MonadThrow : ∀ {ℓ} → MonadThrow {ℓ} (List ErrorPart) TC
+  TC-MonadThrow = record { throw = typeError }
+
 liftResult : ∀ {e ℓ} {E : Set e} {M : Set ℓ → Set ℓ} {{monadThrow : MonadThrow E M}} {A : Set ℓ} → Result E A → M A
 liftResult (ok x) = return x
 liftResult (err e) = throw e
@@ -405,13 +422,6 @@ instance
 --  General utility methods
 --------------------------------------------------------------------------------
 
-mapM-list : ∀ {ℓ M}{A B : Set ℓ} {{monad : RawMonad M}} → (A → M B) → List A → M (List B)
-mapM-list f [] = return []
-mapM-list f (x ∷ xs) =
-  f x >>= λ y →
-  mapM-list f xs >>= λ ys →
-  return (y ∷ ys)
-
 successes : ∀ {ℓ e M} {E : Set e} {{monadCatch : MonadCatch E M}}{{monad : RawMonad M}} {A : Set ℓ} → List (M A) → M (List A)
 successes  [] = return []
 successes {{monadCatch}} {A = A} (x ∷ xs) =
@@ -451,9 +461,9 @@ getArg (arg _ x) = x
 map-arg : ∀ {A B} → (A → B) → Arg A → Arg B
 map-arg f (arg i x) = arg i (f x)
 
-mapM-arg : ∀ {A B M} {{monad : RawMonad M}} → (A → M B) → Arg A → M (Arg B)
-mapM-arg {{monad}} f (arg i x) = f x >>= return ∘ arg i
-  -- where instance monad′ = monad
+instance
+  traversableArg : RawTraversable Arg
+  traverse {{traversableArg}} f (arg i x) = arg i <$> f x
 
 liftTC : ∀ {e r} {E : Set e}{R : Set r} → TC R → RTC E R
 tryRunRTC (liftTC x) = x >>=′ return ∘ ok

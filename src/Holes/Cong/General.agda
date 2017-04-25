@@ -73,9 +73,9 @@ private
   autoCongWithType equality-term target-type =
     -- Try to decompose the goal type, which should be of the form `x ≡ y`, into
     -- `x` and `y`. Throw a type error if this is not possible.
-    runRTC (λ _ → typeError $ strErr "Term is not of the form x ≈ y:"
-                            ∷ termErr target-type
-                            ∷ []) (liftMaybe tt (decompose≈ target-type)) >>=² λ goalLhs _ →
+    liftMaybe ( strErr "Term is not of the form x ≈ y:"
+              ∷ termErr target-type
+              ∷ []) (decompose≈ target-type) >>=² λ goalLhs _ →
     -- Try to make a lambda into the holes of the LHS. Throw a type error if
     -- this is not possible.
     checkedTermToHoley′ (printHoleyErr goalLhs) goalLhs >>=² λ _ lhs-holey →
