@@ -4,9 +4,7 @@ open import Holes.Prelude
 open PropEq using (_≡_; refl; cong; sym; trans)
 
 open import Holes.Term using (⌞_⌟)
-import Holes.Cong.General as Cong
-
-open Cong (quote-term _≡_) (quote-term cong) (quote-term sym)
+open import Holes.Cong.Propositional
 
 private
   +-zero : ∀ x → x + 0 ≡ x
@@ -54,12 +52,12 @@ test5 x y = cong! (+-comm y x)
 test6 : ∀ x y → (Fin ⌞ x + y ⌟ → ℕ) ≡ (Fin ⌞ y + x ⌟ → ℕ)
 test6 x y = cong! (+-comm x y)
 
--- Fails with a nice error message when holes contain different terms
+-- -- Fails with a nice error message when holes contain different terms
 -- fail1 : ∀ x y z → y ≡ x → ⌞ x ⌟ + ⌞ y ⌟ + z ≡ x + x + z
 -- fail1 x y z eq = cong! eq
 
--- This is only provable in the presence of functional extensionality, so the
--- macro should obviously fail here. It would be nice if the error message
--- were improved though.
+-- -- This is only provable in the presence of functional extensionality, so the
+-- -- macro should obviously fail here. It would be nice if the error message
+-- -- were improved though.
 -- fail2 : ∀ (x y : ℕ) → (λ (f : ℕ → ℕ) → ⌞ f x + f y ⌟) ≡ (λ f → f y + f x)
 -- fail2 x y = cong! (+-comm _ _)

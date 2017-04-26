@@ -227,6 +227,9 @@ record RawTraversable {t} (T : Set t → Set t) : Set (lsuc t) where
 
 open RawTraversable {{...}} public
 
+traverse- : {T M : Set → Set} {{traversable : RawTraversable T}} {{monad : RawMonad M}} {A B : Set} → (A → M B) → T A → M ⊤
+traverse- f xs = traverse f xs >> return tt
+
 instance
   traversableList : ∀ {t} → RawTraversable (List {t})
   traverse {{traversableList}} f [] = return []

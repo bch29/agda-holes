@@ -50,7 +50,7 @@ printHoleyErr goalLhs (unsupportedTerm x)
   ∷ termErr x
   ∷ []
 printHoleyErr goalLhs mismatched-hole-terms
-  = strErr "Holey-fied version of goal LHS failed to unify with the original."
+  = strErr "Terms in different holes failed to unify with each other."
   ∷ strErr "Check that every hole has an identical term in it."
   ∷ strErr "Offending term:"
   ∷ termErr goalLhs
@@ -143,28 +143,31 @@ termToHoley : Term → Result HoleyErr HoleyTerm
 termToHoley term = proj₂ <$> termToHoleyHelper term
 
 -- A variant of `termToHoley` that also returns the term in the hole. If there
--- are multiple holes, returns only the term in one of them (which is considered
--- to be chosen arbitrarily).
+-- are multiple holes, returns all of the terms that are in them.
 
-termToHoley′ : Term → Result HoleyErr (Term × HoleyTerm)
-termToHoley′ term with termToHoleyHelper term
-... | ok (t ∷ _ , h) = ok (t , h)
--- If there is no hole, the whole thing is the hole
-... | ok ([] , h) = ok (term , hole [])
-... | err e = err e
+termToHoley′ : Term → Result HoleyErr (List Term × HoleyTerm)
+termToHoley′ = termToHoleyHelper
+
+private
+  unifyAll : List Term → TC (Maybe Term)
+  unifyAll [] = return nothing
+  unifyAll (x ∷ xs) = traverse- (unify x) xs >> return (just x)
 
 checkedTermToHoley : Term → RTC HoleyErr (Term × HoleyTerm)
 checkedTermToHoley term =
-  liftResult (termToHoley′ term) >>=² λ hole-term holey →
-  liftTC (unify term (fillHoley′ (λ _ → hole-term) holey))
+  liftResult (termToHoley′ term) >>=² λ holeTerms holey →
+  liftTC (unifyAll holeTerms)
     ⟨ catchRTC ⟩
-  throw mismatchedHoleTerms >>= λ _ →
-  return (hole-term , holey)
+  throw mismatchedHoleTerms >>= λ
+  { nothing → return (fillHoley′ (λ _ → unknown) holey , hole [])
+  ; (just holeTerm) → return (holeTerm , holey)
+  }
 
--- A variant of `termToHoley` that also returns the term in the hole, and
--- checks that the holey term is valid by unifying it with the original term.
--- The list of error parts given is thrown as a type error if the term could not
--- be converted to a holey term.
+-- A variant of `termToHoley` that also returns the term in the hole, and checks
+-- that the holey term is valid by unifying it with the original term. The list
+-- of error parts given is thrown as a type error if the term could not be
+-- converted to a holey term. Also, if there are no holes, treats the entire
+-- expression as a hole.
 
 checkedTermToHoley′ : (HoleyErr → List ErrorPart) → Term → TC (Term × HoleyTerm)
 checkedTermToHoley′ error =

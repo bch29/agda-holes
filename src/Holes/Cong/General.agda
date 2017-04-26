@@ -10,7 +10,6 @@ open import Holes.Prelude
 -- NOTE: Why can't we accept the actual functions as arguments instead of quoted
 -- versions? Because macros don't play nicely with modules.
 module Holes.Cong.General
-  (quote-≈ : Term)
   (quote-cong : Term)
   (quote-sym : Term)
   where
@@ -46,14 +45,6 @@ private
   decompose≈ : Term → Maybe (Term × Term)
   decompose≈ = getArgs >=> ≈relevantArgs
 
-  apply≈ : Term → Term → Term
-  apply≈ lhs rhs =
-    def (quote id)
-        ( basicArg quote-≈
-        ∷ basicArg lhs
-        ∷ basicArg rhs
-        ∷ [])
-
   applyCong : Term → Term → Term
   applyCong lambda inner-equality =
     def (quote id)
@@ -70,35 +61,37 @@ private
         ∷ [])
 
   autoCongWithType : Term → Type → TC Term
-  autoCongWithType equality-term target-type =
-    -- Try to decompose the goal type, which should be of the form `x ≡ y`, into
+  autoCongWithType equalityTerm targetType =
+    -- Try to decompose the goal type, which should be of the form `x ≈ y`, into
     -- `x` and `y`. Throw a type error if this is not possible.
     liftMaybe ( strErr "Term is not of the form x ≈ y:"
-              ∷ termErr target-type
-              ∷ []) (decompose≈ target-type) >>=² λ goalLhs _ →
-    -- Try to make a lambda into the holes of the LHS. Throw a type error if
-    -- this is not possible.
-    checkedTermToHoley′ (printHoleyErr goalLhs) goalLhs >>=² λ _ lhs-holey →
+              ∷ termErr targetType
+              ∷ []) (decompose≈ targetType) >>=² λ goalLhs _ →
+    -- Try to extract the holes in the LHS. Throw a type error if this is not
+    -- possible.
+    checkedTermToHoley′ (printHoleyErr goalLhs) goalLhs >>=² λ _ lhsHoley →
+    -- Construct a lambda expression into the holes in the LHS.
+    return (holeyToLam lhsHoley) >>= λ lhsLam →
     -- Apply the `cong` function with our newly constructed lambda and the
     -- provided equality term. Most implicit arguments are left unknown, and
     -- then inferred by Agda when we call `checkType`.
-    return (applyCong (holeyToLam lhs-holey) equality-term) >>= λ cong-term →
+    return (applyCong lhsLam equalityTerm) >>= λ congTerm →
     -- Try to check the type of the cong term. If it doesn't work, try it
     -- symmetrically. If that doesn't work, try the first again so that the user
     -- gets a nicer error message.
-    checkType cong-term target-type
+    checkType congTerm targetType
       ⟨ catchTC ⟩
-    checkType (applySym cong-term) target-type
+    checkType (applySym congTerm) targetType
       ⟨ catchTC ⟩
-    checkType cong-term target-type
+    checkType congTerm targetType
     -- `checkType` hopefully returns to us the `cong` call with filled implicit
     -- arguments. Assuming the user's logic is correct, this is what we need to
     -- prove the goal.
 
   cong!′ : Term → Term → TC ⊤
-  cong!′ equality-term target =
+  cong!′ equalityTerm target =
     inferType target >>=
-    autoCongWithType equality-term >>=
+    autoCongWithType equalityTerm >>=
     unify target
 
 macro
