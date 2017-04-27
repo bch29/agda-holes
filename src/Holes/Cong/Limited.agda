@@ -122,20 +122,6 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
         ... | ok y = ok y
         ... | err e₂ = err (e₁ <> e₂)
 
-    _=Visibility?_ : Visibility → Visibility → Bool
-    visible =Visibility? visible = true
-    hidden =Visibility? hidden = true
-    instance′ =Visibility? instance′ = true
-    x =Visibility? y = false
-
-    _=Relevance?_ : Relevance → Relevance → Bool
-    relevant =Relevance? relevant = true
-    irrelevant =Relevance? irrelevant = true
-    x =Relevance? y = false
-
-    _=ArgInfo?_ : ArgInfo → ArgInfo → Bool
-    arg-info x u =ArgInfo? arg-info y v = (x =Visibility? y) ∧ (u =Relevance? v)
-
     zipArglists : ∀ {A B : Set} → List (Arg A) → List (Arg B) → List (Arg (A × B))
     zipArglists xs ys = map (λ { (arg i x , arg _ y) → arg i (x , y)}) (zip xs ys)
 
@@ -147,6 +133,7 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
       buildPath : ℕ → Term → HoleyTerm → Result (List CongErr) HolePath
       buildPath depth original (hole _) = return hole
       buildPath depth (lit _) (lit l) = err (noHole ∷ [])
+      buildPath depth unknown unknown = err (noHole ∷ [])
       buildPath depth (var _ _) (var x _) = err (appliedVar x unknown ∷ [])
       buildPath depth (con _ originalArgs) (con nm args) =
         findHole (suc depth) (zipArglists originalArgs args) >>=² λ argPlace nextPath →
@@ -171,25 +158,27 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
 
     autoCong : Term → Term → RTC (List CongErr) ⊤
     autoCong equiv goal =
+      -- Infer the type of the goal
       liftTC (inferType goal) >>= λ goalType →
+      -- Try to decompose the goal type into a left and right hand side.
       liftMaybe (typeNotEquivalence ∷ []) (decomposeEquiv goalType) >>=² λ goalLhs goalRhs →
-      liftResult (mapErr ((_∷ []) ∘ holeyErr goalLhs) (termToHoley goalLhs)) >>= λ holeyLhs →
-      liftResult (mapErr (map (fillErrHoley holeyLhs)) (buildPath 0 goalLhs holeyLhs)) >>= λ lhsPath →
+      -- Try to convert the goal LHS to a holey term.
+      liftResult′ (singleton ∘ holeyErr goalLhs) (termToHoley goalLhs) >>= λ holeyLhs →
+      -- Try to build a path to a hole in the LHS.
+      liftResult′ (map (fillErrHoley holeyLhs)) (buildPath 0 goalLhs holeyLhs) >>= λ lhsPath →
+      -- Try to convert the path to a chain of congruence applications.
       liftResult (pathToCong lhsPath equiv) >>= λ congTerm →
+      -- Try to unify the result with the goal to complete the proof.
       liftTC (unify congTerm goal)
 
     autoCongDebug : Term → Term → RTC (List CongErr) ⊤
     autoCongDebug equiv goal =
       liftTC (inferType goal) >>= λ goalType →
-      liftMaybe (typeNotEquivalence ∷ []) (decomposeEquiv goalType) >>=² λ goalLhs goalRhs →
-      liftResult (mapErr ((_∷ []) ∘ holeyErr goalLhs) (termToHoley goalLhs)) >>= λ holeyLhs →
-
-      liftTC (typeError (map (termErr ∘ getArg) (getArglist goalLhs) ++
-                         (strErr "and" ∷ []) ++
-                         map (termErr ∘ getArg) (getArglist (fillHoleyHole holeyLhs)))) >>= λ (_ : ⊤) →
-      -- liftTC (typeError (termErr goalLhs ∷ termErr (fillHoleyHole holeyLhs) ∷ [])) >>= λ (_ : ⊤) →
-
-      liftResult (mapErr (map (fillErrHoley holeyLhs)) (buildPath 0 goalLhs holeyLhs)) >>= λ lhsPath →
+      liftMaybe (singleton typeNotEquivalence) (decomposeEquiv goalType) >>=² λ goalLhs goalRhs →
+      liftResult′ (singleton ∘ holeyErr goalLhs) (termToHoley goalLhs) >>= λ holeyLhs →
+      let showArgs = map (termErr ∘ getArg) ∘ getArglist
+      in typeError′ (showArgs goalLhs ++ (strErr "and" ∷ showArgs (fillHoleyHole holeyLhs))) >>= λ (_ : ⊤) →
+      liftResult′ (map (fillErrHoley holeyLhs)) (buildPath 0 goalLhs holeyLhs) >>= λ lhsPath →
       liftResult (pathToCong lhsPath equiv) >>= λ congTerm →
       liftTC (unify congTerm goal)
 

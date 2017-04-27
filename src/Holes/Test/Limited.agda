@@ -19,7 +19,8 @@ module Contrived where
     succ : Expr → Expr
     _⊕_ _⊛_ : Expr → Expr → Expr
 
-  -- An unsophisticated 'equality' relation on the expression trees
+  -- An unsophisticated 'equality' relation on the expression trees. Doesn't try
+  -- to make the operations associative.
 
   data _≈_ : Expr → Expr → Set where
     zero-cong : zero ≈ zero

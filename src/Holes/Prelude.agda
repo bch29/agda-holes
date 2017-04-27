@@ -99,6 +99,9 @@ if false then x else y = y
 --  List operations
 --------------------------------------------------------------------------------
 
+singleton : ∀ {a}{A : Set a} → A → List A
+singleton x = x ∷ []
+
 map : ∀ {a b}{A : Set a}{B : Set b} → (A → B) → List A → List B
 map f [] = []
 map f (x ∷ xs) = f x ∷ map f xs
@@ -394,9 +397,12 @@ instance
   TC-MonadThrow : ∀ {ℓ} → MonadThrow {ℓ} (List ErrorPart) TC
   TC-MonadThrow = record { throw = typeError }
 
+liftResult′ : ∀ {e ℓ} {E E′ : Set e} {M : Set ℓ → Set ℓ} {{monadThrow : MonadThrow E′ M}} {A : Set ℓ} → (E → E′) → Result E A → M A
+liftResult′ _ (ok x) = return x
+liftResult′ f (err e) = throw (f e)
+
 liftResult : ∀ {e ℓ} {E : Set e} {M : Set ℓ → Set ℓ} {{monadThrow : MonadThrow E M}} {A : Set ℓ} → Result E A → M A
-liftResult (ok x) = return x
-liftResult (err e) = throw e
+liftResult = liftResult′ id
 
 liftMaybe : ∀ {e ℓ}{E : Set e} {M : Set ℓ → Set ℓ} {{monadThrow : MonadThrow E M}} {A : Set ℓ} → E → Maybe A → M A
 liftMaybe error (just x) = return x
@@ -492,6 +498,9 @@ tryRunRTC (mapRtcErr f x) = tryRunRTC x >>= return ∘ mapErr f
 
 runRtcOrTypeError : ∀ {ℓ} {E R : Set ℓ} → (E → List ErrorPart) → RTC E R → TC R
 runRtcOrTypeError error = tryRunRTC >=> result (typeError ∘ error) return
+
+typeError′ : ∀ {ℓ} {E R : Set ℓ} → List ErrorPart → RTC E R
+typeError′ = liftTC ∘ typeError
 
 --------------------------------------------------------------------------------
 --  Macros that aid debugging
