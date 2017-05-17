@@ -44,7 +44,7 @@ private
     termsDontMatch : ℕ → Term → HoleyTerm → CongErr
     typeNotEquivalence noHole : CongErr
     appliedVar : (varIdx : ℕ) (goalLhs : Term) → CongErr
-    metaOnPath piOnPath lamOnPath : CongErr
+    metaOnPath piOnPath lamOnPath sortOnPath : CongErr
     noCongAvailable : Name → ArgPlace → CongErr
     holeyErr : (goalLhs : Term) (holeyErr : HoleyErr) → CongErr
 
@@ -80,6 +80,7 @@ private
   printCongErr metaOnPath = strErr "Metavariables in the goal LHS are not supported." ∷ []
   printCongErr piOnPath = strErr "Pi types in the goal LHS are not supported." ∷ []
   printCongErr lamOnPath = strErr "Lambdas in the goal LHS are not supported." ∷ []
+  printCongErr sortOnPath = strErr "Sorts in the goal LHS are not supported." ∷ []
   printCongErr (noCongAvailable nm argPlace)
     = strErr "No congruence available for function"
     ∷ nameErr nm
@@ -144,6 +145,7 @@ module AutoCong (database : List (Name × ArgPlace × Congruence)) where
       buildPath depth (lam _ _) (lam _ _) = err (lamOnPath ∷ [])
       buildPath depth (lam _ _) (pi _ _) = err (piOnPath ∷ [])
       buildPath depth (lam _ _) (meta _ _) = err (metaOnPath ∷ [])
+      buildPath depth (agda-sort _) (agda-sort _) = err (sortOnPath ∷ [])
       buildPath depth original holey = err (termsDontMatch depth original holey ∷ [])
 
     pathToCong : HolePath → Term → Result (List CongErr) Term

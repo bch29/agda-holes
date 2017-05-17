@@ -10,8 +10,8 @@ open import Holes.Prelude
 -- NOTE: Why can't we accept the actual functions as arguments instead of quoted
 -- versions? Because macros don't play nicely with modules.
 module Holes.Cong.General
-  (quote-cong : Term)
-  (quote-sym : Term)
+  (quote-cong : Name)
+  (quote-sym : Name)
   where
 
 open Holes.Prelude public using (quote-term)
@@ -47,17 +47,15 @@ private
 
   applyCong : Term → Term → Term
   applyCong lambda inner-equality =
-    def (quote id)
-        ( basicArg quote-cong
-        ∷ basicArg lambda           -- f : A → B
+    def quote-cong
+        ( basicArg lambda           -- f : A → B
         ∷ basicArg inner-equality   -- x ≈ y
         ∷ [])
 
   applySym : Term → Term
   applySym equality =
-    def (quote id)
-        ( basicArg quote-sym
-        ∷ basicArg equality    -- i ≈ j
+    def quote-sym
+        ( basicArg equality    -- i ≈ j
         ∷ [])
 
   autoCongWithType : Term → Type → TC Term

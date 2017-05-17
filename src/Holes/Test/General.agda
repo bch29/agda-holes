@@ -27,7 +27,7 @@ private
 test1 : ∀ x y z → ⌞ x + y ⌟ + z ≡ (y + x) + z
 test1 x y z = cong! (+-comm x y)
 
--- TODO: This works, but if you replace `y` by `_` in the above, there are
+-- NOTE: This works, but if you replace `y` by `_` in the above, there are
 -- unsolved metas!
 test1′ : ∀ x y z → x + y + z ≡ y + x + z
 test1′ x y z = cong (λ h → h + z) (+-comm x _)
@@ -51,6 +51,10 @@ test5 x y = cong! (+-comm y x)
 -- Works in Π types
 test6 : ∀ x y → (Fin ⌞ x + y ⌟ → ℕ) ≡ (Fin ⌞ y + x ⌟ → ℕ)
 test6 x y = cong! (+-comm x y)
+
+-- Constructors on the path
+test7 : ∀ x y → ℕ.suc ⌞ x + y ⌟ ≡ suc (y + x)
+test7 x y = cong! (+-comm x y)
 
 -- -- Fails with a nice error message when holes contain different terms
 -- fail1 : ∀ x y z → y ≡ x → ⌞ x ⌟ + ⌞ y ⌟ + z ≡ x + x + z

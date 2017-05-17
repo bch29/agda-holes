@@ -11,5 +11,5 @@ open PropEq using (_≡_; refl; cong; sym; trans)
 
 import Holes.Cong.General as Cong
 
-open Cong (quote-term cong) (quote-term sym) public
+open Cong (quote cong) (quote sym) public
   using (cong!)

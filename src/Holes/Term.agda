@@ -24,12 +24,13 @@ private
 
 data HoleyTerm : Set where
   hole : (args : List (Arg Term)) → HoleyTerm
-  lit : (l : Literal) → HoleyTerm
   var : (x : ℕ) (args : List (Arg HoleyTerm)) → HoleyTerm
   con : (c : Name) (args : List (Arg HoleyTerm)) → HoleyTerm
   def : (f : Name) (args : List (Arg HoleyTerm)) → HoleyTerm
   lam : (v : Visibility) (holeyAbs : Abs HoleyTerm) → HoleyTerm
   pi : (a : Arg HoleyTerm) (b : Abs HoleyTerm) → HoleyTerm
+  agda-sort : (s : Sort) → HoleyTerm
+  lit : (l : Literal) → HoleyTerm
   unknown : HoleyTerm
   meta : (x : Meta) (args : List (Arg HoleyTerm)) → HoleyTerm
 
@@ -85,6 +86,7 @@ fillHoley freeVarMod binderDepth filler = go binderDepth
   go depth (pi (arg v a) (abs s b)) =
     pi (arg v (go depth a))
        (abs s (go depth b))
+  go _ (agda-sort s) = agda-sort s
   go _ unknown = unknown
 
 -- Converts a HoleyTerm to a regular term which abstracts a variable that is
@@ -134,6 +136,7 @@ private
       termToHoleyHelper b >>=² λ ts₂ b′ →
       return (ts₁ ++ ts₂ , pi (arg v a′) (abs s b′))
     termToHoleyHelper unknown | nothing = ok ([] , unknown)
+    termToHoleyHelper (agda-sort s) | nothing = ok ([] , agda-sort s)
     ... | _ = err (unsupportedTerm term)
 
 -- If a term has a hole in it, specified by ⌞_⌟ around a subterm, returns a
@@ -220,6 +223,10 @@ private
   module Tests where
     open PropEq using (_≡_; refl)
 
+    data Fin : ℕ → Set where
+      zero : ∀ {n} → Fin (suc n)
+      suc : ∀ {n} → Fin n → Fin (suc n)
+
     eqTyped : ∀ {a}(A : Set a) → A → A → Set a
     eqTyped _ x y = x ≡ y
 
@@ -240,3 +247,11 @@ private
     -- Multiple holes are possible
     test4 : ∀ x y z → lambdaIntoHole (x + ⌞ y + z ⌟ * ⌞ y + z ⌟ + y * z) ≡ λ hole → x + hole * hole + y * z
     test4 x y z = refl
+
+    -- Holes into Π types
+    test5 : ∀ x y → lambdaIntoHole (Fin ⌞ x + y ⌟ → ℕ) ≡ λ hole → Fin hole → ℕ
+    test5 x y = refl
+
+    -- Constructors on the path
+    test6 : (x y : ℕ) → lambdaIntoHole (ℕ.suc (x + ⌞ y ⌟ + y)) ≡ λ hole → suc (x + hole + y)
+    test6 x y = refl
