@@ -1,10 +1,6 @@
 Holes
 -----
 
-## Notice ##
-
-This work is part of my undergraduate dissertation project, which is ongoing. As such I can't currently accept pull requests, although bug reports and feature requests are welcome.
-
 ## Introduction ##
 
 Holes is an Agda library that uses reflection to make writing equational reasoning proofs easier.
