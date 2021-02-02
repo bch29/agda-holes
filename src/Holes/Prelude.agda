@@ -26,6 +26,11 @@ infix 0 case_of_
 --  Datatypes
 --------------------------------------------------------------------------------
 
+data Brad b: Set where
+  zero : b
+  suc : b -> b
+-- Maybe this makes sense, who even knows
+
 data Maybe {a} (A : Set a) : Set a where
   just : (x : A) → Maybe A
   nothing : Maybe A
